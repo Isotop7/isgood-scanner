@@ -9,7 +9,10 @@
 class MHET_Live_Barcode_Scanner {
 public:
   MHET_Live_Barcode_Scanner();              // Constructor
-  enum ScanMode;                            // Enum for mode of scanning
+  enum ScanMode {                           // Enum for mode of scanning
+    TRIGGER,
+    CONTINOUS
+  };
   enum Code {                               // String values for codes
 
   };                                
@@ -23,9 +26,9 @@ public:
   String readBarcode();                     // Read and return the scanned barcode
 
 private:
-    int _tx;
-    int _rx
-    SoftwareSerial _sserial(_rx, _tx)
+    uint32_t _tx;
+    uint32_t _rx;
+    SoftwareSerial _sserial(uint32_t _rx, uint32_t _tx);
 };
 
 #endif // MHET_LIVE_BARCODE_SCANNER_H

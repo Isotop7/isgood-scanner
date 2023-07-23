@@ -33,3 +33,7 @@
 
 # Temporary spec sheet
 SPECS.md
+
+# IDE stuff
+.pio
+.vscode
