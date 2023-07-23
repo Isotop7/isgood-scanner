@@ -31,8 +31,8 @@
 *.out
 *.app
 
-# Temporary spec sheet
-SPECS.md
+# Documentation
+docs/
 
 # IDE stuff
 .pio

@@ -8,22 +8,22 @@
 
 class MHET_Live_Barcode_Scanner {
 public:
-  MHET_Live_Barcode_Scanner();              // Constructor
-  enum ScanMode {                           // Enum for mode of scanning
+  MHET_Live_Barcode_Scanner(uint32_t _rx, uint32_t _tx);              
+  enum ScanMode {                           
     TRIGGER,
     CONTINOUS
   };
-  enum Code {                               // String values for codes
+  enum Code {                               
 
   };                                
-  std::map<Code, std::string> CodeMap {     // Code map
+  std::map<Code, std::string> CodeMap {     
 
   };
 
-  void begin(Stream &serial);               // Initialize the barcode scanner
-  void setMode(ScanMode mode);              // Sets operation mode
-  String dumpConfig();                      // Retrieves config and dumps it
-  String readBarcode();                     // Read and return the scanned barcode
+  void begin(Stream &serial);
+  void setMode(ScanMode mode);
+  String dumpConfig();
+  String readBarcode();
 
 private:
     uint32_t _tx;
