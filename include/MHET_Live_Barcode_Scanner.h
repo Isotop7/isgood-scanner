@@ -14,10 +14,14 @@ public:
     CONTINOUS
   };
   enum Code {                               
-
+    FactoryReset,
+    SaveUserDefaults,
+    RestoreUserDefaults
   };                                
-  std::map<Code, std::string> CodeMap {     
-
+  std::map<Code, std::string> CodeMap = {     
+    {FactoryReset,        "~MA5F01B2C."},
+    {SaveUserDefaults,    "~MA5F0506A."},
+    {RestoreUserDefaults, "~MA5F08F37."}
   };
 
   void begin(Stream &serial);
