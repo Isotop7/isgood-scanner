@@ -93,9 +93,7 @@ The scanner can also be controlled in manual mode and scanning can be triggered 
 | `1326` | Enable or disable ISSN codes |
 | `1353` | Enable or disable CODE32 codes |
 
-**(1)**: There seems to be an error or at least some inconclusive values in the official documentation on what these codes do and which values can be set. **Please use with caution!**
-
-**(2)**: I really dont know what this does and I need to test it. **Please use with caution!**
+**(1)**: I really dont know what this does and I need to test it. **Please use with caution!**
 
 All option codes with specified values can be found in the file [MHET_Live_Barcode_Scanner.h](./include/MHET_Live_Barcode_Scanner.h).
 
