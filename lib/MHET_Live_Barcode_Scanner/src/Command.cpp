@@ -21,7 +21,7 @@ String Command::getOptionCode() const {
     if (it != map.end()) {
         return it->second;
     } else {
-        char formattedString[5];  // Adjust the buffer size as needed
+        char formattedString[6];  // Adjust the buffer size as needed
         sprintf(formattedString, "0x%04X", _optionCode);
         return formattedString;
     }
