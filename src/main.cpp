@@ -2,6 +2,7 @@
 #include <SoftwareSerial.h>
 #include <MHET_Live_Barcode_Scanner.h>
 #include <CommandResponse.h>
+#include "Settings.h"
 
 const unsigned long SERIAL_TIMEOUT = 2000;
 const unsigned long SERIAL_BUFFER_TIMEOUT = 50;

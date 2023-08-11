@@ -4,3 +4,6 @@
 .vscode/launch.json
 .vscode/ipch
 reference/
+
+# Settings
+include/Settings.h
