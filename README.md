@@ -1,7 +1,37 @@
-# mhet-live-barcode-scanner
-Library to use the MH-ET LIVE Barcode scanner module
+# isgood-scanner
+ESP8266 based microcontroller code to use the MH-ET LIVE Barcode scanner module with [isgood](https://github.com/Isotop7/isgood)
 
 ## Configuration
+
+Configuration in this implementation is done by creating your own `Settings.h` in the folder `include` with the following content:
+
+```cpp
+#include <Arduino.h>
+
+const int8_t SCANNER_RX_PIN = 1;
+const int8_t SCANNER_TX_PIN = 2;
+const unsigned long SCANNER_SERIAL_BUFFER_TIMEOUT = 50;
+
+const String WIFI_SSID = "wifi";
+const String WIFI_PASSWORD = "password";
+
+const String OTA_HOSTNAME = "hostname";
+const String OTA_USERNAME = "username";
+const String OTA_PASSWORD = "password";
+
+uint8_t MQTT_BROKER_IP[] = {127, 0, 0, 1};
+uint16_t MQTT_BROKER_PORT = 1883;
+const unsigned long MQTT_DELAY = 1000;
+const String MQTT_BROKER_USERNAME = "username";
+const String MQTT_BROKER_PASSWORD = "password";
+
+const char *ISGOOD_TOPIC_BARCODE = "product/barcode";
+const char *ISGOOD_TOPIC_BESTBEFORE_SET = "product/best_before/set";
+const char *ISGOOD_TOPIC_BARCODE_REMOVE = "product/barcode/remove";
+const char *ISGOOD_TOPIC_SCANNEDAT_GET = "product/scanned_at/get";
+const char *ISGOOD_TOPIC_SCANNEDAT_PUBLISH = "product/scanned_at/publish";
+u_int8_t ISGOOD_CONFIG_BESTBEFORETIMEOUT = 15;
+```
 
 ### Structure
 

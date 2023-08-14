@@ -41,7 +41,12 @@ void MHET_Live_Barcode_Scanner::readConfig(const char* rawConfig, size_t length)
     }
 }
 
-std::vector<Command> MHET_Live_Barcode_Scanner::getConfiguration()
+std::vector<Command> MHET_Live_Barcode_Scanner::getConfigurationInstance()
 {
     return _configuration;
+}
+
+String MHET_Live_Barcode_Scanner::getConfigurationAsString()
+{
+    return "";
 }

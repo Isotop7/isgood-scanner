@@ -13,7 +13,8 @@ public:
   
   bool configureOption(uint16_t optionCode, int value);
   void readConfig(const char* rawConfig, size_t length);
-  std::vector<Command> getConfiguration();
+  std::vector<Command> getConfigurationInstance();
+  String getConfigurationAsString();
 
 private:
   SoftwareSerial* _serial;
