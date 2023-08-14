@@ -2,6 +2,11 @@
 #include "Command.h"
 #include "OptionCode.h"
 
+const String Command::Suffix = ".\n";
+
+const String Command::Mode::MODIFY = "~M";
+const String Command::Mode::QUERY = "~Q";
+
 Command::Command()
 {
     _optionCode = 0;

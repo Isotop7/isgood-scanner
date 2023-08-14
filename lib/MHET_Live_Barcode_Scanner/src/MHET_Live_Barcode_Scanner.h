@@ -9,15 +9,24 @@
 
 class MHET_Live_Barcode_Scanner {
 public:
-  MHET_Live_Barcode_Scanner(SoftwareSerial* serial);
+  MHET_Live_Barcode_Scanner(SoftwareSerial* serial, unsigned long timeout);
+  void resetSettings();
+  void enableOutput();
   
-  bool configureOption(uint16_t optionCode, int value);
-  void readConfig(const char* rawConfig, size_t length);
-  std::vector<Command> getConfigurationInstance();
-  String getConfigurationAsString();
+  Command::Response configureOption(int optionCode, int value);
+  void setOption(int optionCode, int value);
+  void getOption(int optionCode);
 
+  Command::Response queryConfiguration();
+  void readConfig(const char* rawConfig, size_t length);
+  std::vector<Command> getConfigurationInstance() const;
+  String getConfigurationAsString() const;
+  String getConfigurationAsHTML() const;
+
+  String getNextBarcode() const;
 private:
   SoftwareSerial* _serial;
+  unsigned long _timeout;
   std::vector<Command> _configuration;
   void generateCommand();
   bool sendCommand();

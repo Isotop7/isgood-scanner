@@ -55,7 +55,25 @@ namespace OptionCodes
     EnableGS1                               = 0x1200,
     EnableISBN                              = 0x1300,
     EnableISSN                              = 0x1326,
-    EnableCODE32                            = 0x1353
+    EnableCODE32                            = 0x1353,
+    DeviceSettings                          = 0xA5F0,
+    ConfigurationManagement                 = 0xFA50
+  };
+
+  class Values
+  {
+    public:
+      enum SetupMode {
+        INACTIVE,
+        ACTIVE
+      };
+      
+      enum ScanMode {                           
+        TRIGGER,
+        CONTINOUS,
+        INDUCTION,
+        COMMAND
+      };
   };
 
   uint16_t getHexValueForEnum(OptionCode code);

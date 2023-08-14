@@ -51,7 +51,9 @@ namespace OptionCodes
         {OptionCode::EnableGS1, "EnableGS1"},
         {OptionCode::EnableISBN, "EnableISBN"},
         {OptionCode::EnableISSN, "EnableISSN"},
-        {OptionCode::EnableCODE32, "EnableCODE32"}
+        {OptionCode::EnableCODE32, "EnableCODE32"},
+        {OptionCode::DeviceSettings, "DeviceSettings"},
+        {OptionCode::ConfigurationManagement, "ConfigurationManagement"}
     };
 
     // Function to get the hex value for a given enum name
