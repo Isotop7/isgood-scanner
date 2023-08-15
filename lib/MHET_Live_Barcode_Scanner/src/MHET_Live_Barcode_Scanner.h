@@ -6,10 +6,11 @@
 #include <vector>
 #include "OptionCode.h"
 #include "Command.h"
+#include "Logger.h"
 
 class MHET_Live_Barcode_Scanner {
 public:
-  MHET_Live_Barcode_Scanner(SoftwareSerial* serial, unsigned long timeout);
+  MHET_Live_Barcode_Scanner(SoftwareSerial* serial, unsigned long timeout, Logger& loggerRef);
   void resetSettings();
   void enableOutput();
   
@@ -27,6 +28,7 @@ public:
 private:
   SoftwareSerial* _serial;
   unsigned long _timeout;
+  Logger& _logger;
   std::vector<Command> _configuration;
   void generateCommand();
   bool sendCommand();

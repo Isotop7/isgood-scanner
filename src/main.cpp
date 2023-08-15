@@ -8,35 +8,21 @@
 #include <MHET_Live_Barcode_Scanner.h>
 #include <Command.h>
 #include <Product.h>
+#include <Logger.h>
 
 #include "Settings.h"
 
 const bool RESET_SCANNER = false;
 const bool ENABLE_DEBUG = false;
-const String FIRMWARE_VERSION = "0.1.5";
+const String FIRMWARE_VERSION = "0.1.6";
 
-const String LOG_EVENT_INFO = "INFO";
-const String LOG_EVENT_WARN = "WARNING";
-const String LOG_EVENT_ERROR = "ERROR";
-
-const String LOG_COMPONENT_MAIN = "ESP8266";
-const String LOG_COMPONENT_SCANNER = "SCANNER";
-const String LOG_COMPONENT_CONFIG = "CONFIGURATION";
-const String LOG_COMPONENT_OTA = "OTA";
-const String LOG_COMPONENT_WIFI = "WIFI";
-const String LOG_COMPONENT_MQTT = "MQTT";
-
+Logger logger;
 SoftwareSerial scannerSerial(SCANNER_RX_PIN, SCANNER_TX_PIN);
-MHET_Live_Barcode_Scanner scanner(&scannerSerial, SCANNER_SERIAL_BUFFER_TIMEOUT);
+MHET_Live_Barcode_Scanner scanner(&scannerSerial, SCANNER_SERIAL_BUFFER_TIMEOUT, logger);
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
-
-void writeLog(String component, String event, String message)
-{
-  Serial.println("+ <" + component + "> | [" + event + "] : " + message);
-}
 
 void setupScanner()
 {
@@ -63,10 +49,10 @@ void showConfig()
         message += obj.getOptionCode();
         message += "; Value -> ";
         message += String(obj.getValue(), HEX);
-        writeLog(LOG_COMPONENT_CONFIG, LOG_EVENT_INFO, message);
+        logger.log(Logger::LOG_COMPONENT_CONFIG, Logger::LOG_EVENT_INFO, message);
         commandElements++;
     }
-    writeLog(LOG_COMPONENT_CONFIG, LOG_EVENT_INFO, "Number of configuration commands: " + commandElements);
+    logger.log(Logger::LOG_COMPONENT_CONFIG, Logger::LOG_EVENT_INFO, "Number of configuration commands: " + commandElements);
   }
 }
 
@@ -90,20 +76,20 @@ void setup() {
   // Setup serial monitors
   Serial.begin(9600);
   delay(1000);
-  writeLog(LOG_COMPONENT_MAIN, LOG_EVENT_INFO, "Setup external serial monitor");
+  logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Setup external serial monitor");
   scannerSerial.begin(9600);
 
   // Check if scanner should be reset
   if (RESET_SCANNER)
   {
-    writeLog(LOG_COMPONENT_MAIN, LOG_EVENT_WARN, "Reset all settings");
+    logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_WARN, "Reset all settings");
     scanner.resetSettings();
-    writeLog(LOG_COMPONENT_MAIN, LOG_EVENT_INFO, "Set up scanner");
+    logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Set up scanner");
     setupScanner();
   }
 
   // Show current config
-  writeLog(LOG_COMPONENT_MAIN, LOG_EVENT_INFO, "Show config");
+  logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Show config");
   showConfig();
 
   // Setup wifi
@@ -111,9 +97,9 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED)
   {
       delay(500);
-      writeLog(LOG_COMPONENT_WIFI, LOG_EVENT_INFO, "Connecting ...");
+      logger.log(Logger::LOG_COMPONENT_WIFI, Logger::LOG_EVENT_INFO, "Connecting ...");
   }
-  writeLog(LOG_COMPONENT_WIFI, LOG_EVENT_INFO, "Connected to Wifi with IP " + WiFi.localIP().toString());
+  logger.log(Logger::LOG_COMPONENT_WIFI, Logger::LOG_EVENT_INFO, "Connected to Wifi with IP " + WiFi.localIP().toString());
 
   // Setup dns discovery
   MDNS.begin(OTA_HOSTNAME);
@@ -123,27 +109,27 @@ void setup() {
   // Add root handler
   httpServer.on("/", handleRoot);
   httpServer.begin();
-  writeLog(LOG_COMPONENT_OTA, LOG_EVENT_INFO, OTA_HOSTNAME);
+  logger.log(Logger::LOG_COMPONENT_OTA, Logger::LOG_EVENT_INFO, OTA_HOSTNAME);
 
   // Setup mqtt connection
   mqttClient.setServer(MQTT_BROKER_IP, MQTT_BROKER_PORT);
   //client.setCallback(callback);
 
-  writeLog(LOG_COMPONENT_MAIN, LOG_EVENT_INFO, "Leave setup()");
+  logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Leave setup()");
 }
 
 void loop() {
   Product product = Product(scanner.getNextBarcode());
   if (!mqttClient.connected()) {
     while (!mqttClient.connected()) {
-      writeLog(LOG_COMPONENT_MQTT, LOG_EVENT_WARN, "Trying to connect to mqtt broker ...");
+      logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_WARN, "Trying to connect to mqtt broker ...");
       mqttClient.connect("isgood", MQTT_BROKER_USERNAME, MQTT_BROKER_PASSWORD);
       delay(MQTT_DELAY);
     }
   }
   if (product.isValid())
   {
-    writeLog(LOG_COMPONENT_MQTT, LOG_EVENT_INFO, "Publish new barcode " + product.getBarcode());
+    logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Publish new barcode " + product.getBarcode());
     mqttClient.publish(ISGOOD_TOPIC_BARCODE, product.toJSON().c_str());
   }
 

@@ -4,14 +4,9 @@
 #include <SoftwareSerial.h>
 #include <vector>
 #include "Command.h"
+#include "Logger.h"
 
-SoftwareSerial _serial;
-
-MHET_Live_Barcode_Scanner::MHET_Live_Barcode_Scanner(SoftwareSerial* serial, unsigned long timeout) 
-{
-    _serial = serial;
-    _timeout = timeout;
-}
+MHET_Live_Barcode_Scanner::MHET_Live_Barcode_Scanner(SoftwareSerial* serial, unsigned long timeout, Logger& loggerRef) : _serial(serial), _timeout(timeout), _logger(loggerRef) {}
 
 void MHET_Live_Barcode_Scanner::resetSettings()
 {
@@ -237,6 +232,7 @@ String MHET_Live_Barcode_Scanner::getNextBarcode() const
   {
     receivedChar = _serial->read();
     if (receivedChar == static_cast<char>(Command::Response::EOL)) {
+      _logger.log(Logger::LOG_COMPONENT_SCANNER, Logger::LOG_EVENT_INFO, "Scanned new barcode -> " + barcode);
       break; // Exit the loop if line feed character is received
     }
     barcode += receivedChar;
