@@ -8,9 +8,15 @@ Configuration in this implementation is done by creating your own `Settings.h` i
 ```cpp
 #include <Arduino.h>
 
-const int8_t SCANNER_RX_PIN = 1;
-const int8_t SCANNER_TX_PIN = 2;
+const int8_t SCANNER_RX_PIN = D6;
+const int8_t SCANNER_TX_PIN = D7;
 const unsigned long SCANNER_SERIAL_BUFFER_TIMEOUT = 50;
+
+const int8_t OLED_SCL_PIN = D1;
+const int8_t OLED_SDA_PIN = D2;
+const int8_t OLED_SCREEN_WIDTH = 128;
+const int8_t OLED_SCREEN_HEIGHT = 32;
+const int8_t OLED_RESET_PIN = -1;
 
 const String WIFI_SSID = "wifi";
 const String WIFI_PASSWORD = "password";

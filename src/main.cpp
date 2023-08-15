@@ -4,6 +4,10 @@
 #include <PubSubClient.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266HTTPUpdateServer.h>
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 #include <MHET_Live_Barcode_Scanner.h>
 #include <Command.h>
@@ -14,9 +18,10 @@
 
 const bool RESET_SCANNER = false;
 const bool ENABLE_DEBUG = false;
-const String FIRMWARE_VERSION = "0.1.6";
+const String FIRMWARE_VERSION = "0.2.0";
 
-Logger logger;
+Adafruit_SSD1306 oledDisplay(OLED_SCREEN_WIDTH, OLED_SCREEN_HEIGHT, &Wire, OLED_RESET_PIN);
+Logger logger(oledDisplay);
 SoftwareSerial scannerSerial(SCANNER_RX_PIN, SCANNER_TX_PIN);
 MHET_Live_Barcode_Scanner scanner(&scannerSerial, SCANNER_SERIAL_BUFFER_TIMEOUT, logger);
 WiFiClient espClient;
@@ -73,9 +78,27 @@ void handleRoot() {
 }
 
 void setup() {
-  // Setup serial monitors
+  // Setup serial monitor
   Serial.begin(9600);
-  delay(1000);
+  
+  // Setup display
+  if(oledDisplay.begin(SSD1306_SWITCHCAPVCC, 0x3C)) 
+  { 
+    oledDisplay.clearDisplay();
+    oledDisplay.setTextSize(1);
+    oledDisplay.setTextColor(WHITE);
+    oledDisplay.setCursor(0, 0);
+    oledDisplay.println("OLED INIT COMPLETE");
+    oledDisplay.display();
+    delay(1000);
+    logger.log(Logger::LOG_COMPONENT_DISPLAY, Logger::LOG_EVENT_INFO, "Display active");
+  }
+  else
+  {
+    logger.log(Logger::LOG_COMPONENT_DISPLAY, Logger::LOG_EVENT_ERROR, "Setting up display failed");
+  }
+
+  // Setup external monitor
   logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Setup external serial monitor");
   scannerSerial.begin(9600);
 
