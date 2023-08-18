@@ -22,7 +22,6 @@ class Logger
         static const String LOG_COMPONENT_MQTT;
         static const String LOG_COMPONENT_DISPLAY;
         static const String LOG_COMPONENT_JOYSTICK;
-        static const String LOG_COMPONENT_MENU;
 
         void log(String component, String event, String message);
         void rewindLog();

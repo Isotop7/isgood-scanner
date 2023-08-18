@@ -14,24 +14,34 @@
 #include <Command.h>
 #include <Product.h>
 #include <Logger.h>
-#include <Menu.h>
 
 #include "Settings.h"
 
 const bool RESET_SCANNER = false;
 const bool ENABLE_DEBUG = false;
-const String FIRMWARE_VERSION = "0.3.1";
+const String FIRMWARE_VERSION = "0.3.2";
 
 Adafruit_SSD1306 oledDisplay(OLED_SCREEN_WIDTH, OLED_SCREEN_HEIGHT, &Wire, OLED_RESET_PIN);
 Adafruit_ADS1115 analogMux;
 Logger logger(oledDisplay);
-Menu menu(logger, oledDisplay, analogMux, JOYSTICK_SWITCH_PIN);
 SoftwareSerial scannerSerial(SCANNER_RX_PIN, SCANNER_TX_PIN);
 MHET_Live_Barcode_Scanner scanner(&scannerSerial, SCANNER_SERIAL_BUFFER_TIMEOUT, logger);
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
+
+const String menuItems[] = {"Scan Barcode", "Show ScannedAt", "Remove product", "Show log"};
+int8_t currentMenuItemIndex = 0;
+int8_t activeSubMenuIndex = 0;
+bool displayAvailable = true;
+bool joystickButtonLatch = false;
+bool joystickDownLatch = false;
+bool joystickLeftLatch = false;
+bool joystickUpLatch = false;
+bool joystickRightLatch = false;
+bool menuRefreshPending = true;
+bool menuItemRefreshPending;
 
 void setupScanner()
 {
@@ -81,6 +91,194 @@ void handleRoot() {
   httpServer.send(200, "text/html", response);
 }
 
+void drawMenuScanBarcode()
+{
+  if (menuItemRefreshPending)
+  {
+      oledDisplay.clearDisplay();
+      oledDisplay.setCursor(0, 0);
+      oledDisplay.println("Waiting for new barcode ...");
+      oledDisplay.display();
+
+      menuItemRefreshPending = false;
+  }
+
+  Product product = Product(scanner.getNextBarcode());
+  if (product.isValid())
+  {
+      logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Publish new barcode " + product.getBarcode());
+      mqttClient.publish(ISGOOD_TOPIC_BARCODE, product.toJSON().c_str());
+  }
+}
+
+void drawMenuShowScannedAt()
+{
+    if (menuItemRefreshPending)
+    {
+        logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_ERROR, "Not implemented!");
+        menuItemRefreshPending = false;
+    }
+}
+
+void drawMenuRemoveProduct()
+{
+    if (menuItemRefreshPending)
+    {
+        logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_ERROR, "Not implemented!");
+        menuItemRefreshPending = false;
+    }
+}
+
+void drawMenuShowLog()
+{
+    if (menuItemRefreshPending)
+    {
+        logger.rewindLog();
+        menuItemRefreshPending = false;
+    }
+}
+
+
+void selectNextItem()
+{
+    currentMenuItemIndex = currentMenuItemIndex + 1;
+    if (currentMenuItemIndex >= menuItems->length())
+    {
+        currentMenuItemIndex = 0;
+    }
+}
+
+void selectPreviousItem()
+{
+    currentMenuItemIndex = currentMenuItemIndex - 1;
+    if (currentMenuItemIndex < 0)
+    {
+        currentMenuItemIndex = menuItems->length() - 1;
+    }
+}
+
+void executeSelectedItem()
+{
+    activeSubMenuIndex = currentMenuItemIndex + 1;
+    menuItemRefreshPending = true;
+}
+
+void mainLoop()
+{
+  if (activeSubMenuIndex == 0)
+    {
+        // Reset latches
+        menuItemRefreshPending = true;
+        joystickLeftLatch = false;
+        // Read joystick
+        int adc0 = analogMux.readADC_SingleEnded(0);
+        long xAxisValue = map(adc0,0,32768,0,1000);
+
+        // Detect input down
+        if (xAxisValue < 300 && joystickDownLatch == false)
+        {
+            joystickDownLatch = true;
+            selectNextItem();
+            menuRefreshPending = true;;
+        }
+        else if (xAxisValue >= 300 && joystickDownLatch == true)
+        {
+            joystickDownLatch = false;
+        }
+
+        // Detect input up
+        if (xAxisValue > 700 && joystickUpLatch == false)
+        {
+            joystickUpLatch = true;
+            selectPreviousItem();
+            menuRefreshPending = true;;
+        }
+        else if (xAxisValue <= 700 && joystickUpLatch == true)
+        {
+            joystickUpLatch = false;
+        }
+
+        // Detect selection
+        int switchStatus = digitalRead(JOYSTICK_SWITCH_PIN);
+        if (switchStatus == LOW && joystickButtonLatch == false)
+        {
+            joystickButtonLatch = true;
+            executeSelectedItem();
+            menuRefreshPending = true;
+        }
+        else if (switchStatus == HIGH && joystickButtonLatch == true)
+        {
+            joystickButtonLatch = false;
+        }
+
+        if (menuRefreshPending)
+        {
+            if (displayAvailable)
+            {
+                oledDisplay.clearDisplay();
+                menuRefreshPending = false;
+            }
+
+            for (u_int8_t i = 0; i < menuItems->length(); ++i) 
+            {
+                String item;
+                if (i == currentMenuItemIndex) 
+                {
+                    item += ">\t";
+                } else 
+                {
+                    item += " \t";
+                }
+                item += menuItems[i];
+
+                if (displayAvailable)
+                {
+                    int nextLineCursor = 0;
+                    if (i > 0)
+                    {
+                        nextLineCursor = i * 8 + 1;
+                    }
+                    oledDisplay.setCursor(0, nextLineCursor);
+                    oledDisplay.println(item);
+                    oledDisplay.display();
+                }
+            }
+        }
+    }
+    else
+    {
+        int adc1 = analogMux.readADC_SingleEnded(1);
+        long yAxisValue = map(adc1,0,32768,0,1000);
+
+        if (yAxisValue < 300 && joystickLeftLatch == false)
+        {
+            joystickLeftLatch = true;
+            activeSubMenuIndex = 0;
+            menuRefreshPending = true;
+        }
+        else 
+        {
+            switch (activeSubMenuIndex)
+            {
+                case 1:
+                    drawMenuScanBarcode();
+                    break;
+                case 2:
+                    drawMenuShowScannedAt();
+                    break;
+                case 3:
+                    drawMenuRemoveProduct();
+                    break;
+                case 4:
+                    drawMenuShowLog();
+                    break;
+                default:
+                    logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_WARN, "Invalid menu index");
+            }
+        }
+    }
+}
+
 void setup() {
   // Setup serial monitor
   Serial.begin(9600);
@@ -109,12 +307,6 @@ void setup() {
   // Setup joystick axes
   analogMux.begin();
   analogMux.setGain(GAIN_ONE);
-
-  // Setup menu
-  menu.addItem(1, "Scan barcode");
-  menu.addItem(2, "Show ScannedAt");
-  menu.addItem(3, "Remove product");
-  menu.addItem(4, "Show log");
 
   // Setup external monitor
   logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Setup external serial monitor");
@@ -160,7 +352,6 @@ void setup() {
 }
 
 void loop() {
-  Product product = Product(scanner.getNextBarcode());
   if (!mqttClient.connected()) {
     while (!mqttClient.connected()) {
       logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_WARN, "Trying to connect to mqtt broker ...");
@@ -174,14 +365,9 @@ void loop() {
       }
     }
   }
-  if (product.isValid())
-  {
-    logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Publish new barcode " + product.getBarcode());
-    mqttClient.publish(ISGOOD_TOPIC_BARCODE, product.toJSON().c_str());
-  }
   
   mqttClient.loop();
-  menu.loop();
+  mainLoop();
   httpServer.handleClient();
   MDNS.update();
 }

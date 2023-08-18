@@ -16,7 +16,6 @@ const String Logger::LOG_COMPONENT_WIFI = "WIFI";
 const String Logger::LOG_COMPONENT_MQTT = "MQTT";
 const String Logger::LOG_COMPONENT_DISPLAY = "DISPLAY";
 const String Logger::LOG_COMPONENT_JOYSTICK = "JOYSTICK";
-const String Logger::LOG_COMPONENT_MENU = "MENU";
 
 Logger::Logger(Adafruit_SSD1306& oledDisplay) : _oledDisplay(oledDisplay), _lastLogMessage (LogMessage("", "", ""))
 {
