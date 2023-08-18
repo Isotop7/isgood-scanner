@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <Adafruit_SSD1306.h>
+#include <LogMessage.h>
 
 class Logger
 {
@@ -20,11 +21,15 @@ class Logger
         static const String LOG_COMPONENT_WIFI;
         static const String LOG_COMPONENT_MQTT;
         static const String LOG_COMPONENT_DISPLAY;
+        static const String LOG_COMPONENT_JOYSTICK;
 
         void log(String component, String event, String message);
+        void rewindLog();
+        LogMessage getLastLogMessage();
     private:
         Adafruit_SSD1306& _oledDisplay;
         bool _displayAvailable = false;
+        LogMessage _lastLogMessage;
 };
 
 #endif // LOGGER_H
