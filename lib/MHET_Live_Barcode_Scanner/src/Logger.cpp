@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <Adafruit_SSD1306.h>
+#include <LogMessage.h>
 
 const String Logger::LOG_EVENT_INFO = "INFO";
 const String Logger::LOG_EVENT_WARN = "WARNING";
@@ -14,14 +15,16 @@ const String Logger::LOG_COMPONENT_OTA = "OTA";
 const String Logger::LOG_COMPONENT_WIFI = "WIFI";
 const String Logger::LOG_COMPONENT_MQTT = "MQTT";
 const String Logger::LOG_COMPONENT_DISPLAY = "DISPLAY";
+const String Logger::LOG_COMPONENT_JOYSTICK = "JOYSTICK";
 
-Logger::Logger(Adafruit_SSD1306& oledDisplay) : _oledDisplay(oledDisplay) 
+Logger::Logger(Adafruit_SSD1306& oledDisplay) : _oledDisplay(oledDisplay), _lastLogMessage (LogMessage("", "", ""))
 {
   _displayAvailable = true;
 }
 
 void Logger::log(String component, String event, String message)
 {
+  _lastLogMessage = LogMessage(component, event, message);
   Serial.println("+ <" + component + "> | [" + event + "] : " + message);
 
   if (_displayAvailable)
@@ -35,4 +38,14 @@ void Logger::log(String component, String event, String message)
     _oledDisplay.println("Message: " + message);
     _oledDisplay.display();
   }
+}
+
+void Logger::rewindLog()
+{
+  log(_lastLogMessage.getComponent(), _lastLogMessage.getEvent(), _lastLogMessage.getMessage());
+}
+
+LogMessage Logger::getLastLogMessage()
+{
+  return _lastLogMessage;
 }
