@@ -8,20 +8,24 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Adafruit_ADS1X15.h>
 
 #include <MHET_Live_Barcode_Scanner.h>
 #include <Command.h>
 #include <Product.h>
 #include <Logger.h>
+#include <Menu.h>
 
 #include "Settings.h"
 
 const bool RESET_SCANNER = false;
 const bool ENABLE_DEBUG = false;
-const String FIRMWARE_VERSION = "0.2.0";
+const String FIRMWARE_VERSION = "0.3.1";
 
 Adafruit_SSD1306 oledDisplay(OLED_SCREEN_WIDTH, OLED_SCREEN_HEIGHT, &Wire, OLED_RESET_PIN);
+Adafruit_ADS1115 analogMux;
 Logger logger(oledDisplay);
+Menu menu(logger, oledDisplay, analogMux, JOYSTICK_SWITCH_PIN);
 SoftwareSerial scannerSerial(SCANNER_RX_PIN, SCANNER_TX_PIN);
 MHET_Live_Barcode_Scanner scanner(&scannerSerial, SCANNER_SERIAL_BUFFER_TIMEOUT, logger);
 WiFiClient espClient;
@@ -98,6 +102,20 @@ void setup() {
     logger.log(Logger::LOG_COMPONENT_DISPLAY, Logger::LOG_EVENT_ERROR, "Setting up display failed");
   }
 
+  // Setup joystich switch
+  pinMode(JOYSTICK_SWITCH_PIN, INPUT_PULLUP);
+  logger.log(Logger::LOG_COMPONENT_JOYSTICK, Logger::LOG_EVENT_INFO, "Joystick switch is ready");
+
+  // Setup joystick axes
+  analogMux.begin();
+  analogMux.setGain(GAIN_ONE);
+
+  // Setup menu
+  menu.addItem(1, "Scan barcode");
+  menu.addItem(2, "Show ScannedAt");
+  menu.addItem(3, "Remove product");
+  menu.addItem(4, "Show log");
+
   // Setup external monitor
   logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Setup external serial monitor");
   scannerSerial.begin(9600);
@@ -112,8 +130,8 @@ void setup() {
   }
 
   // Show current config
-  logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Show config");
-  showConfig();
+  //logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Show config");
+  //showConfig();
 
   // Setup wifi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -148,6 +166,12 @@ void loop() {
       logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_WARN, "Trying to connect to mqtt broker ...");
       mqttClient.connect("isgood", MQTT_BROKER_USERNAME, MQTT_BROKER_PASSWORD);
       delay(MQTT_DELAY);
+
+      if (mqttClient.connected())
+      {
+        logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Connected to mqtt broker");
+        break;
+      }
     }
   }
   if (product.isValid())
@@ -155,8 +179,9 @@ void loop() {
     logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Publish new barcode " + product.getBarcode());
     mqttClient.publish(ISGOOD_TOPIC_BARCODE, product.toJSON().c_str());
   }
-
+  
   mqttClient.loop();
+  menu.loop();
   httpServer.handleClient();
   MDNS.update();
 }
