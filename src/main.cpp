@@ -9,6 +9,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_ADS1X15.h>
+#include <CountDown.h>
 
 #include <MHET_Live_Barcode_Scanner.h>
 #include <Command.h>
@@ -31,17 +32,37 @@ PubSubClient mqttClient(espClient);
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
+// MENU
+bool menuRefreshPending = true;
+bool menuItemRefreshPending;
 const String menuItems[] = {"Scan Barcode", "Show ScannedAt", "Remove product", "Show log"};
-int8_t currentMenuItemIndex = 0;
-int8_t activeSubMenuIndex = 0;
+enum menuIndex
+{
+    MAIN_MENU = 0,
+    SCAN_BARCODE = 1,
+    SHOW_SCANNEDAT = 2,
+    REMOVE_PRODUCT = 3,
+    SHOW_LOG = 4,
+    SET_TIMESTAMP = 5
+};
+int8_t selectedMenuIndex = 0;
+int8_t activeMenuIndex = 0;
+// DISPLAY
 bool displayAvailable = true;
+// JOYSTICK
 bool joystickButtonLatch = false;
 bool joystickDownLatch = false;
 bool joystickLeftLatch = false;
 bool joystickUpLatch = false;
 bool joystickRightLatch = false;
-bool menuRefreshPending = true;
-bool menuItemRefreshPending;
+// TIMESTAMP
+int16_t timestamp [3] = {1,1,2023};
+const u_int8_t daysOfMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+int8_t selectedTimestampDigit = 0;
+bool timestampRefreshPending = true;
+// SCANNER
+Product product;
+CountDown bestBeforeTimeout(CountDown::Resolution::SECONDS);
 
 void setupScanner()
 {
@@ -97,17 +118,21 @@ void drawMenuScanBarcode()
   {
       oledDisplay.clearDisplay();
       oledDisplay.setCursor(0, 0);
-      oledDisplay.println("Waiting for new barcode ...");
+      oledDisplay.println("Waiting for new");
+      oledDisplay.println("barcode ...");
       oledDisplay.display();
 
       menuItemRefreshPending = false;
   }
 
-  Product product = Product(scanner.getNextBarcode());
+  product = Product(scanner.getNextBarcode());
   if (product.isValid())
   {
       logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Publish new barcode " + product.getBarcode());
       mqttClient.publish(ISGOOD_TOPIC_BARCODE, product.toJSON().c_str());
+      bestBeforeTimeout.start(ISGOOD_CONFIG_BESTBEFORETIMEOUT);
+      activeMenuIndex = menuIndex::SET_TIMESTAMP;
+      menuRefreshPending = true;
   }
 }
 
@@ -138,38 +163,190 @@ void drawMenuShowLog()
     }
 }
 
+void decreaseTimestampDigit()
+{
+    timestamp[selectedTimestampDigit] = timestamp[selectedTimestampDigit] - 1;
+
+    // Check for day overflow
+    if (timestamp[0] < 1)
+    {
+        timestamp[1] = timestamp[1] - 1;
+        timestamp[0] = daysOfMonth[timestamp[1]];
+    }
+
+    // Check if month does overflow
+    if (timestamp[1] < 1)
+    {
+        // Reset to january
+        timestamp[1] = 12;
+        // Decrement year
+        timestamp[2] = timestamp[2] - 1;
+    }
+}
+
+void increaseTimestampDigit()
+{
+    timestamp[selectedTimestampDigit] = timestamp[selectedTimestampDigit] + 1;
+
+    // Check for day overflow
+    if (timestamp[0] > daysOfMonth[timestamp[1]])
+    {
+        timestamp[0] = 1;
+        timestamp[1] = timestamp[1] + 1;
+    }
+
+    // Check if month does overflow
+    if (timestamp[1] > 12)
+    {
+        // Reset to january
+        timestamp[1] = 1;
+        // Increment year
+        timestamp[2] = timestamp[2] + 1;
+    }    
+}
+
+void moveTimestampDigit()
+{
+    selectedTimestampDigit = selectedTimestampDigit + 1;
+
+    // Check for overflow
+    if (selectedTimestampDigit > 2)
+    {
+        selectedTimestampDigit = 0;
+    }
+}
+
+void publishTimestamp()
+{
+}
+
+void drawMenuSetTimestamp()
+{
+    if (bestBeforeTimeout.isStopped())
+    {
+        activeMenuIndex = menuIndex::MAIN_MENU;
+        selectedMenuIndex = 0;
+        menuRefreshPending = true;
+        menuItemRefreshPending = true;
+        return;
+    }
+    
+    // Read joystick
+    int adc0 = analogMux.readADC_SingleEnded(0);
+    int adc1 = analogMux.readADC_SingleEnded(1);
+    long xAxisValue = map(adc0,0,32768,0,1000);
+    long yAxisValue = map(adc1,0,32768,0,1000);
+
+    // Detect input down -> decrease digit
+    if (xAxisValue < 300 && joystickDownLatch == false)
+    {
+        joystickDownLatch = true;
+        decreaseTimestampDigit();
+    }
+    else if (xAxisValue >= 300 && joystickDownLatch == true)
+    {
+        joystickDownLatch = false;
+    }
+
+    // Detect input up -> increase digit
+    if (xAxisValue > 700 && joystickUpLatch == false)
+    {
+        joystickUpLatch = true;
+        increaseTimestampDigit();
+    }
+    else if (xAxisValue <= 700 && joystickUpLatch == true)
+    {
+        joystickUpLatch = false;
+    }
+
+    // Detect input right -> next digit
+    if (yAxisValue > 700 && joystickRightLatch == false)
+    {
+        joystickRightLatch = true;
+        moveTimestampDigit();
+    }
+    else if (yAxisValue <= 700 && joystickRightLatch == true)
+    {
+        joystickRightLatch = false;
+    }
+
+    // Detect selection -> save timestamp
+    int switchStatus = digitalRead(JOYSTICK_SWITCH_PIN);
+    if (switchStatus == LOW && joystickButtonLatch == false)
+    {
+        joystickButtonLatch = true;
+        publishTimestamp();
+        selectedMenuIndex = 0;
+        activeMenuIndex = menuIndex::MAIN_MENU;
+        menuRefreshPending = true;
+    }
+    else if (switchStatus == HIGH && joystickButtonLatch == true)
+    {
+        joystickButtonLatch = false;
+    }
+
+    if (displayAvailable)
+    {
+        oledDisplay.clearDisplay();
+        menuRefreshPending = false;
+    }
+
+    oledDisplay.setCursor(40, 0);
+    oledDisplay.print(timestamp[0]);
+    oledDisplay.print(".");
+    oledDisplay.print(timestamp[1]);
+    oledDisplay.print(".");
+    oledDisplay.print(timestamp[2]);
+
+    oledDisplay.setCursor((36 + selectedTimestampDigit * 12), 10);
+    if (selectedTimestampDigit == 2)
+    {
+        oledDisplay.print("~~~~~");
+    }
+    else
+    {
+        oledDisplay.print("~~");
+    }
+
+    oledDisplay.setCursor(22, 18);
+    oledDisplay.print(bestBeforeTimeout.remaining());
+    oledDisplay.println(" seconds left");
+    oledDisplay.display();
+}
+
 
 void selectNextItem()
 {
-    currentMenuItemIndex = currentMenuItemIndex + 1;
-    if (currentMenuItemIndex >= menuItems->length())
+    selectedMenuIndex = selectedMenuIndex + 1;
+    if (selectedMenuIndex >= menuItems->length())
     {
-        currentMenuItemIndex = 0;
+        selectedMenuIndex = 0;
     }
 }
 
 void selectPreviousItem()
 {
-    currentMenuItemIndex = currentMenuItemIndex - 1;
-    if (currentMenuItemIndex < 0)
+    selectedMenuIndex = selectedMenuIndex - 1;
+    if (selectedMenuIndex < 0)
     {
-        currentMenuItemIndex = menuItems->length() - 1;
+        selectedMenuIndex = menuItems->length() - 1;
     }
 }
 
 void executeSelectedItem()
 {
-    activeSubMenuIndex = currentMenuItemIndex + 1;
+    activeMenuIndex = selectedMenuIndex + 1;
     menuItemRefreshPending = true;
 }
 
 void mainLoop()
 {
-  if (activeSubMenuIndex == 0)
+  if (activeMenuIndex == menuIndex::MAIN_MENU)
     {
         // Reset latches
         menuItemRefreshPending = true;
         joystickLeftLatch = false;
+        joystickRightLatch = false;
         // Read joystick
         int adc0 = analogMux.readADC_SingleEnded(0);
         long xAxisValue = map(adc0,0,32768,0,1000);
@@ -222,7 +399,7 @@ void mainLoop()
             for (u_int8_t i = 0; i < menuItems->length(); ++i) 
             {
                 String item;
-                if (i == currentMenuItemIndex) 
+                if (i == selectedMenuIndex) 
                 {
                     item += ">\t";
                 } else 
@@ -250,27 +427,30 @@ void mainLoop()
         int adc1 = analogMux.readADC_SingleEnded(1);
         long yAxisValue = map(adc1,0,32768,0,1000);
 
-        if (yAxisValue < 300 && joystickLeftLatch == false)
+        if (yAxisValue < 300 && joystickLeftLatch == false && activeMenuIndex != menuIndex::SET_TIMESTAMP)
         {
             joystickLeftLatch = true;
-            activeSubMenuIndex = 0;
+            activeMenuIndex = 0;
             menuRefreshPending = true;
         }
         else 
         {
-            switch (activeSubMenuIndex)
+            switch (activeMenuIndex)
             {
-                case 1:
+                case menuIndex::SCAN_BARCODE:
                     drawMenuScanBarcode();
                     break;
-                case 2:
+                case menuIndex::SHOW_SCANNEDAT:
                     drawMenuShowScannedAt();
                     break;
-                case 3:
+                case menuIndex::REMOVE_PRODUCT:
                     drawMenuRemoveProduct();
                     break;
-                case 4:
+                case menuIndex::SHOW_LOG:
                     drawMenuShowLog();
+                    break;
+                case menuIndex::SET_TIMESTAMP:
+                    drawMenuSetTimestamp();
                     break;
                 default:
                     logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_WARN, "Invalid menu index");
@@ -330,7 +510,7 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED)
   {
       delay(500);
-      logger.log(Logger::LOG_COMPONENT_WIFI, Logger::LOG_EVENT_INFO, "Connecting ...");
+      logger.log(Logger::LOG_COMPONENT_WIFI, Logger::LOG_EVENT_INFO, "Connecting to Wifi ...");
   }
   logger.log(Logger::LOG_COMPONENT_WIFI, Logger::LOG_EVENT_INFO, "Connected to Wifi with IP " + WiFi.localIP().toString());
 
