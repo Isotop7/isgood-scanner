@@ -9,13 +9,18 @@ class Product
         Product();
         Product(String barcode);
 
-        String toJSON() const;
+        String getBarcodeJSON() const;
+        String getBestBeforeJSON() const;
         boolean isValid() const;
 
+        void setBestBefore(int16_t timestamp[3]);
+
         String getBarcode() const;
+        String getBestBefore() const;
 
     private:
         String _barcode;
+        String _bestBefore;
 };
 
 #endif // PRODUCT_H

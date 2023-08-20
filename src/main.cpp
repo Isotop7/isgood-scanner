@@ -20,7 +20,7 @@
 
 const bool RESET_SCANNER = false;
 const bool ENABLE_DEBUG = false;
-const String FIRMWARE_VERSION = "0.3.2";
+const String FIRMWARE_VERSION = "0.3.3";
 
 Adafruit_SSD1306 oledDisplay(OLED_SCREEN_WIDTH, OLED_SCREEN_HEIGHT, &Wire, OLED_RESET_PIN);
 Adafruit_ADS1115 analogMux;
@@ -35,7 +35,8 @@ ESP8266HTTPUpdateServer httpUpdater;
 // MENU
 bool menuRefreshPending = true;
 bool menuItemRefreshPending;
-const String menuItems[] = {"Scan Barcode", "Show ScannedAt", "Remove product", "Show log"};
+int8_t menuItemsLimit = 4;
+String menuItems[4] = {"Scan Barcode", "Show ScannedAt", "Remove product", "Show log"};
 enum menuIndex
 {
     MAIN_MENU = 0,
@@ -129,7 +130,7 @@ void drawMenuScanBarcode()
   if (product.isValid())
   {
       logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Publish new barcode " + product.getBarcode());
-      mqttClient.publish(ISGOOD_TOPIC_BARCODE, product.toJSON().c_str());
+      mqttClient.publish(ISGOOD_TOPIC_BARCODE, product.getBarcodeJSON().c_str());
       bestBeforeTimeout.start(ISGOOD_CONFIG_BESTBEFORETIMEOUT);
       activeMenuIndex = menuIndex::SET_TIMESTAMP;
       menuRefreshPending = true;
@@ -218,6 +219,9 @@ void moveTimestampDigit()
 
 void publishTimestamp()
 {
+    product.setBestBefore(timestamp);
+    logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, String("Publish new bestBeforeDate for product " + product.getBarcode() + " with bestBefore '" + product.getBestBefore()) + "'");
+    mqttClient.publish(ISGOOD_TOPIC_BESTBEFORE_SET, product.getBestBeforeJSON().c_str());
 }
 
 void drawMenuSetTimestamp()
@@ -279,6 +283,7 @@ void drawMenuSetTimestamp()
         selectedMenuIndex = 0;
         activeMenuIndex = menuIndex::MAIN_MENU;
         menuRefreshPending = true;
+        return;
     }
     else if (switchStatus == HIGH && joystickButtonLatch == true)
     {
@@ -318,7 +323,7 @@ void drawMenuSetTimestamp()
 void selectNextItem()
 {
     selectedMenuIndex = selectedMenuIndex + 1;
-    if (selectedMenuIndex >= menuItems->length())
+    if (selectedMenuIndex >= menuItemsLimit)
     {
         selectedMenuIndex = 0;
     }
@@ -329,7 +334,7 @@ void selectPreviousItem()
     selectedMenuIndex = selectedMenuIndex - 1;
     if (selectedMenuIndex < 0)
     {
-        selectedMenuIndex = menuItems->length() - 1;
+        selectedMenuIndex = menuItemsLimit - 1;
     }
 }
 
@@ -396,7 +401,7 @@ void mainLoop()
                 menuRefreshPending = false;
             }
 
-            for (u_int8_t i = 0; i < menuItems->length(); ++i) 
+            for (u_int8_t i = 0; i < menuItemsLimit; ++i) 
             {
                 String item;
                 if (i == selectedMenuIndex) 

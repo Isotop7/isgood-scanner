@@ -10,9 +10,29 @@ Product::Product(String barcode)
     _barcode = barcode;
 }
 
-String Product::toJSON() const
+String Product::getBarcode() const
+{
+    return _barcode;
+}
+
+String Product::getBarcodeJSON() const
 {
     return "{ \"barcode\" : \"" + _barcode + "\" }";
+}
+
+String Product::getBestBefore() const
+{
+    return _bestBefore;
+}
+
+String Product::getBestBeforeJSON() const
+{
+    return "{ \"barcode\" : \"" + _barcode + "\",\"bestBefore\" : \"" + _bestBefore + "\"}";
+}
+
+void Product::setBestBefore(int16_t timestamp[3])
+{
+    _bestBefore = String(timestamp[2]) + "-" + String(timestamp[1]) + "-" + String(timestamp[0]);
 }
 
 boolean Product::isValid() const
@@ -25,9 +45,4 @@ boolean Product::isValid() const
     {
         return false;
     }
-}
-
-String Product::getBarcode() const
-{
-    return _barcode;
 }
