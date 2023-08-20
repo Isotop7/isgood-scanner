@@ -20,7 +20,7 @@
 
 const bool RESET_SCANNER = false;
 const bool ENABLE_DEBUG = false;
-const String FIRMWARE_VERSION = "0.3.3";
+const String FIRMWARE_VERSION = "0.3.4";
 
 Adafruit_SSD1306 oledDisplay(OLED_SCREEN_WIDTH, OLED_SCREEN_HEIGHT, &Wire, OLED_RESET_PIN);
 Adafruit_ADS1115 analogMux;
@@ -506,9 +506,9 @@ void setup() {
     setupScanner();
   }
 
-  // Show current config
-  //logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Show config");
-  //showConfig();
+  // Query current scanner config
+  logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Query scanner config");
+  scanner.queryConfiguration();
 
   // Setup wifi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
