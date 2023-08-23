@@ -3,36 +3,37 @@
 
 #include <Arduino.h>
 
-class Command {
+class Command
+{
+public:
+    Command();
+    Command(u_int optionCode, u_int value);
+
+    String getOptionCode() const;
+    u_int getValue() const;
+
+    static Command parse(const char *data);
+
+    static const String Suffix;
+
+    class Mode
+    {
     public:
-        Command();
-        Command(u_int optionCode, u_int value);
+        static const String MODIFY;
+        static const String QUERY;
+    };
 
-        String getOptionCode() const;
-        u_int getValue() const;
+    enum class Response : char
+    {
+        INVALID = 0,
+        ACK = 6,
+        ENQ = 5,
+        EOL = '\n'
+    };
 
-        static Command parse(const char* data);
-
-        static const String Suffix;
-
-        class Mode
-        {
-            public:
-                static const String MODIFY;
-                static const String QUERY;
-        };
-
-        enum class Response : char
-        {
-            INVALID = 0,
-            ACK = 6,
-            ENQ = 5,
-            EOL = '\n'
-        };
-
-    private:
-        u_int _optionCode;
-        u_int _value;
+private:
+    u_int _optionCode;
+    u_int _value;
 };
 
 #endif

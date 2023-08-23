@@ -57,7 +57,7 @@ bool joystickLeftLatch = false;
 bool joystickUpLatch = false;
 bool joystickRightLatch = false;
 // TIMESTAMP
-int16_t timestamp [3] = {1,1,2023};
+int16_t timestamp[3] = {1, 1, 2023};
 const u_int8_t daysOfMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 int8_t selectedTimestampDigit = 0;
 bool timestampRefreshPending = true;
@@ -67,81 +67,88 @@ CountDown bestBeforeTimeout(CountDown::Resolution::SECONDS);
 
 void setupScanner()
 {
-  scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::SetupMode), OptionCodes::Values::SetupMode::ACTIVE);
-  scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::SystemScanMode), OptionCodes::Values::ScanMode::TRIGGER);
-  scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::ToneVolumeBootup), 2);
-  scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::ToneVolumeDecode), 3);
-  scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::ToneVolumeConfiguration), 2);
-  scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::DeviceSettings), 0x506A);
-  scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::SetupMode), OptionCodes::Values::SetupMode::INACTIVE);
+    scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::SetupMode), OptionCodes::Values::SetupMode::ACTIVE);
+    scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::SystemScanMode), OptionCodes::Values::ScanMode::TRIGGER);
+    scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::ToneVolumeBootup), 2);
+    scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::ToneVolumeDecode), 3);
+    scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::ToneVolumeConfiguration), 2);
+    scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::DeviceSettings), 0x506A);
+    scanner.configureOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::SetupMode), OptionCodes::Values::SetupMode::INACTIVE);
 }
 
 void showConfig()
 {
-  Command::Response response = scanner.queryConfiguration();
+    Command::Response response = scanner.queryConfiguration();
 
-  if (response == Command::Response::ACK)
-  {
-    std::vector<Command> configuration = scanner.getConfigurationInstance();
+    if (response == Command::Response::ACK)
+    {
+        std::vector<Command> configuration = scanner.getConfigurationInstance();
 
-    int commandElements = 0;
-    for (const Command& obj : configuration) {
-        String message = "OptionCode -> ";
-        message += obj.getOptionCode();
-        message += "; Value -> ";
-        message += String(obj.getValue(), HEX);
-        logger.log(Logger::LOG_COMPONENT_CONFIG, Logger::LOG_EVENT_INFO, message);
-        commandElements++;
+        int commandElements = 0;
+        for (const Command &obj : configuration)
+        {
+            String message = "OptionCode -> ";
+            message += obj.getOptionCode();
+            message += "; Value -> ";
+            message += String(obj.getValue(), HEX);
+            logger.log(Logger::LOG_COMPONENT_CONFIG, Logger::LOG_EVENT_INFO, message);
+            commandElements++;
+        }
+        logger.log(Logger::LOG_COMPONENT_CONFIG, Logger::LOG_EVENT_INFO, "Number of configuration commands: " + commandElements);
     }
-    logger.log(Logger::LOG_COMPONENT_CONFIG, Logger::LOG_EVENT_INFO, "Number of configuration commands: " + commandElements);
-  }
 }
 
-void handleRoot() {
-  String response = F("<!DOCTYPE html>\n"
-              "<html lang='en'>\n"
-              "<head>\n"
-              "<title>isgood-scanner</title>\n"
-              "</head>\n"
-              "<link rel=\"stylesheet\" href=\"https://unpkg.com/sakura.css/css/sakura.css\" type=\"text/css\">\n" 
-              "<body>\n"
-              "<h1>isgood-scanner</h1>\r\n");
-  response += "<h2>firmware version: " + FIRMWARE_VERSION + "</h2>\r\n";
-  response += "<h3>Current configuration:</h3>";
-  response += scanner.getConfigurationAsHTML() + "\r\n";
-  response += "</body></html>";
-  httpServer.send(200, "text/html", response);
+void handleRoot()
+{
+    String response = F("<!DOCTYPE html>\n"
+                        "<html lang='en'>\n"
+                        "<head>\n"
+                        "<title>isgood-scanner</title>\n"
+                        "</head>\n"
+                        "<link rel=\"stylesheet\" href=\"https://unpkg.com/sakura.css/css/sakura.css\" type=\"text/css\">\n"
+                        "<body>\n"
+                        "<h1>isgood-scanner</h1>\r\n");
+    response += "<h2>firmware version: " + FIRMWARE_VERSION + "</h2>\r\n";
+    response += "<h3>Current configuration:</h3>";
+    response += scanner.getConfigurationAsHTML() + "\r\n";
+    response += "</body></html>";
+    httpServer.send(200, "text/html", response);
 }
 
 void drawMenuScanBarcode()
 {
-  if (menuItemRefreshPending)
-  {
-      oledDisplay.clearDisplay();
-      oledDisplay.setCursor(0, 0);
-      oledDisplay.println("Waiting for new");
-      oledDisplay.println("barcode ...");
-      oledDisplay.display();
+    if (menuItemRefreshPending)
+    {
+        oledDisplay.clearDisplay();
+        oledDisplay.setCursor(0, 0);
+        oledDisplay.println("Waiting for new");
+        oledDisplay.println("barcode ...");
+        oledDisplay.display();
 
-      menuItemRefreshPending = false;
-  }
+        menuItemRefreshPending = false;
+    }
 
-  product = Product(scanner.getNextBarcode());
-  if (product.isValid())
-  {
-      logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Publish new barcode " + product.getBarcode());
-      mqttClient.publish(ISGOOD_TOPIC_BARCODE, product.getBarcodeJSON().c_str());
-      bestBeforeTimeout.start(ISGOOD_CONFIG_BESTBEFORETIMEOUT);
-      activeMenuIndex = menuIndex::SET_TIMESTAMP;
-      menuRefreshPending = true;
-  }
+    product = Product(scanner.getNextBarcode());
+    if (product.isValid())
+    {
+        logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Publish new barcode " + product.getBarcode());
+        mqttClient.publish(ISGOOD_TOPIC_BARCODE, product.getBarcodeJSON().c_str());
+        bestBeforeTimeout.start(ISGOOD_CONFIG_BESTBEFORETIMEOUT);
+        activeMenuIndex = menuIndex::SET_TIMESTAMP;
+        menuRefreshPending = true;
+    }
 }
 
 void drawMenuShowScannedAt()
 {
     if (menuItemRefreshPending)
     {
-        logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_ERROR, "Not implemented!");
+        oledDisplay.clearDisplay();
+        oledDisplay.setCursor(0, 0);
+        oledDisplay.println("Waiting for new");
+        oledDisplay.println("barcode ...");
+        oledDisplay.display();
+
         menuItemRefreshPending = false;
     }
 }
@@ -203,7 +210,7 @@ void increaseTimestampDigit()
         timestamp[1] = 1;
         // Increment year
         timestamp[2] = timestamp[2] + 1;
-    }    
+    }
 }
 
 void moveTimestampDigit()
@@ -234,12 +241,12 @@ void drawMenuSetTimestamp()
         menuItemRefreshPending = true;
         return;
     }
-    
+
     // Read joystick
     int adc0 = analogMux.readADC_SingleEnded(0);
     int adc1 = analogMux.readADC_SingleEnded(1);
-    long xAxisValue = map(adc0,0,32768,0,1000);
-    long yAxisValue = map(adc1,0,32768,0,1000);
+    long xAxisValue = map(adc0, 0, 32768, 0, 1000);
+    long yAxisValue = map(adc1, 0, 32768, 0, 1000);
 
     // Detect input down -> decrease digit
     if (xAxisValue < 300 && joystickDownLatch == false)
@@ -319,7 +326,6 @@ void drawMenuSetTimestamp()
     oledDisplay.display();
 }
 
-
 void selectNextItem()
 {
     selectedMenuIndex = selectedMenuIndex + 1;
@@ -346,7 +352,7 @@ void executeSelectedItem()
 
 void mainLoop()
 {
-  if (activeMenuIndex == menuIndex::MAIN_MENU)
+    if (activeMenuIndex == menuIndex::MAIN_MENU)
     {
         // Reset latches
         menuItemRefreshPending = true;
@@ -354,14 +360,15 @@ void mainLoop()
         joystickRightLatch = false;
         // Read joystick
         int adc0 = analogMux.readADC_SingleEnded(0);
-        long xAxisValue = map(adc0,0,32768,0,1000);
+        long xAxisValue = map(adc0, 0, 32768, 0, 1000);
 
         // Detect input down
         if (xAxisValue < 300 && joystickDownLatch == false)
         {
             joystickDownLatch = true;
             selectNextItem();
-            menuRefreshPending = true;;
+            menuRefreshPending = true;
+            ;
         }
         else if (xAxisValue >= 300 && joystickDownLatch == true)
         {
@@ -373,7 +380,8 @@ void mainLoop()
         {
             joystickUpLatch = true;
             selectPreviousItem();
-            menuRefreshPending = true;;
+            menuRefreshPending = true;
+            ;
         }
         else if (xAxisValue <= 700 && joystickUpLatch == true)
         {
@@ -401,13 +409,14 @@ void mainLoop()
                 menuRefreshPending = false;
             }
 
-            for (u_int8_t i = 0; i < menuItemsLimit; ++i) 
+            for (u_int8_t i = 0; i < menuItemsLimit; ++i)
             {
                 String item;
-                if (i == selectedMenuIndex) 
+                if (i == selectedMenuIndex)
                 {
                     item += ">\t";
-                } else 
+                }
+                else
                 {
                     item += " \t";
                 }
@@ -430,7 +439,7 @@ void mainLoop()
     else
     {
         int adc1 = analogMux.readADC_SingleEnded(1);
-        long yAxisValue = map(adc1,0,32768,0,1000);
+        long yAxisValue = map(adc1, 0, 32768, 0, 1000);
 
         if (yAxisValue < 300 && joystickLeftLatch == false && activeMenuIndex != menuIndex::SET_TIMESTAMP)
         {
@@ -438,121 +447,125 @@ void mainLoop()
             activeMenuIndex = 0;
             menuRefreshPending = true;
         }
-        else 
+        else
         {
             switch (activeMenuIndex)
             {
-                case menuIndex::SCAN_BARCODE:
-                    drawMenuScanBarcode();
-                    break;
-                case menuIndex::SHOW_SCANNEDAT:
-                    drawMenuShowScannedAt();
-                    break;
-                case menuIndex::REMOVE_PRODUCT:
-                    drawMenuRemoveProduct();
-                    break;
-                case menuIndex::SHOW_LOG:
-                    drawMenuShowLog();
-                    break;
-                case menuIndex::SET_TIMESTAMP:
-                    drawMenuSetTimestamp();
-                    break;
-                default:
-                    logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_WARN, "Invalid menu index");
+            case menuIndex::SCAN_BARCODE:
+                drawMenuScanBarcode();
+                break;
+            case menuIndex::SHOW_SCANNEDAT:
+                drawMenuShowScannedAt();
+                break;
+            case menuIndex::REMOVE_PRODUCT:
+                drawMenuRemoveProduct();
+                break;
+            case menuIndex::SHOW_LOG:
+                drawMenuShowLog();
+                break;
+            case menuIndex::SET_TIMESTAMP:
+                drawMenuSetTimestamp();
+                break;
+            default:
+                logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_WARN, "Invalid menu index");
             }
         }
     }
 }
 
-void setup() {
-  // Setup serial monitor
-  Serial.begin(9600);
-  
-  // Setup display
-  if(oledDisplay.begin(SSD1306_SWITCHCAPVCC, 0x3C)) 
-  { 
-    oledDisplay.clearDisplay();
-    oledDisplay.setTextSize(1);
-    oledDisplay.setTextColor(WHITE);
-    oledDisplay.setCursor(0, 0);
-    oledDisplay.println("OLED INIT COMPLETE");
-    oledDisplay.display();
-    delay(1000);
-    logger.log(Logger::LOG_COMPONENT_DISPLAY, Logger::LOG_EVENT_INFO, "Display active");
-  }
-  else
-  {
-    logger.log(Logger::LOG_COMPONENT_DISPLAY, Logger::LOG_EVENT_ERROR, "Setting up display failed");
-  }
+void setup()
+{
+    // Setup serial monitor
+    Serial.begin(9600);
 
-  // Setup joystich switch
-  pinMode(JOYSTICK_SWITCH_PIN, INPUT_PULLUP);
-  logger.log(Logger::LOG_COMPONENT_JOYSTICK, Logger::LOG_EVENT_INFO, "Joystick switch is ready");
+    // Setup display
+    if (oledDisplay.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+    {
+        oledDisplay.clearDisplay();
+        oledDisplay.setTextSize(1);
+        oledDisplay.setTextColor(WHITE);
+        oledDisplay.setCursor(0, 0);
+        oledDisplay.println("OLED INIT COMPLETE");
+        oledDisplay.display();
+        delay(1000);
+        logger.log(Logger::LOG_COMPONENT_DISPLAY, Logger::LOG_EVENT_INFO, "Display active");
+    }
+    else
+    {
+        logger.log(Logger::LOG_COMPONENT_DISPLAY, Logger::LOG_EVENT_ERROR, "Setting up display failed");
+    }
 
-  // Setup joystick axes
-  analogMux.begin();
-  analogMux.setGain(GAIN_ONE);
+    // Setup joystich switch
+    pinMode(JOYSTICK_SWITCH_PIN, INPUT_PULLUP);
+    logger.log(Logger::LOG_COMPONENT_JOYSTICK, Logger::LOG_EVENT_INFO, "Joystick switch is ready");
 
-  // Setup external monitor
-  logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Setup external serial monitor");
-  scannerSerial.begin(9600);
+    // Setup joystick axes
+    analogMux.begin();
+    analogMux.setGain(GAIN_ONE);
 
-  // Check if scanner should be reset
-  if (RESET_SCANNER)
-  {
-    logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_WARN, "Reset all settings");
-    scanner.resetSettings();
-    logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Set up scanner");
-    setupScanner();
-  }
+    // Setup external monitor
+    logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Setup external serial monitor");
+    scannerSerial.begin(9600);
 
-  // Query current scanner config
-  logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Query scanner config");
-  scanner.queryConfiguration();
+    // Check if scanner should be reset
+    if (RESET_SCANNER)
+    {
+        logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_WARN, "Reset all settings");
+        scanner.resetSettings();
+        logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Set up scanner");
+        setupScanner();
+    }
 
-  // Setup wifi
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-      delay(500);
-      logger.log(Logger::LOG_COMPONENT_WIFI, Logger::LOG_EVENT_INFO, "Connecting to Wifi ...");
-  }
-  logger.log(Logger::LOG_COMPONENT_WIFI, Logger::LOG_EVENT_INFO, "Connected to Wifi with IP " + WiFi.localIP().toString());
+    // Query current scanner config
+    logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Query scanner config");
+    scanner.queryConfiguration();
 
-  // Setup dns discovery
-  MDNS.begin(OTA_HOSTNAME);
-  MDNS.addService("http", "tcp", 80);
-  // Setup http update server with credentials
-  httpUpdater.setup(&httpServer, OTA_USERNAME, OTA_PASSWORD);
-  // Add root handler
-  httpServer.on("/", handleRoot);
-  httpServer.begin();
-  logger.log(Logger::LOG_COMPONENT_OTA, Logger::LOG_EVENT_INFO, OTA_HOSTNAME);
+    // Setup wifi
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        logger.log(Logger::LOG_COMPONENT_WIFI, Logger::LOG_EVENT_INFO, "Connecting to Wifi ...");
+    }
+    logger.log(Logger::LOG_COMPONENT_WIFI, Logger::LOG_EVENT_INFO, "Connected to Wifi with IP " + WiFi.localIP().toString());
 
-  // Setup mqtt connection
-  mqttClient.setServer(MQTT_BROKER_IP, MQTT_BROKER_PORT);
-  //client.setCallback(callback);
+    // Setup dns discovery
+    MDNS.begin(OTA_HOSTNAME);
+    MDNS.addService("http", "tcp", 80);
+    // Setup http update server with credentials
+    httpUpdater.setup(&httpServer, OTA_USERNAME, OTA_PASSWORD);
+    // Add root handler
+    httpServer.on("/", handleRoot);
+    httpServer.begin();
+    logger.log(Logger::LOG_COMPONENT_OTA, Logger::LOG_EVENT_INFO, OTA_HOSTNAME);
 
-  logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Leave setup()");
+    // Setup mqtt connection
+    mqttClient.setServer(MQTT_BROKER_IP, MQTT_BROKER_PORT);
+    // client.setCallback(callback);
+
+    logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Leave setup()");
 }
 
-void loop() {
-  if (!mqttClient.connected()) {
-    while (!mqttClient.connected()) {
-      logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_WARN, "Trying to connect to mqtt broker ...");
-      mqttClient.connect("isgood", MQTT_BROKER_USERNAME, MQTT_BROKER_PASSWORD);
-      delay(MQTT_DELAY);
+void loop()
+{
+    if (!mqttClient.connected())
+    {
+        while (!mqttClient.connected())
+        {
+            logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_WARN, "Trying to connect to mqtt broker ...");
+            mqttClient.connect("isgood", MQTT_BROKER_USERNAME, MQTT_BROKER_PASSWORD);
+            delay(MQTT_DELAY);
 
-      if (mqttClient.connected())
-      {
-        logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Connected to mqtt broker");
-        break;
-      }
+            if (mqttClient.connected())
+            {
+                logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Connected to mqtt broker");
+                break;
+            }
+        }
     }
-  }
-  
-  mqttClient.loop();
-  mainLoop();
-  httpServer.handleClient();
-  MDNS.update();
+
+    mqttClient.loop();
+    mainLoop();
+    httpServer.handleClient();
+    MDNS.update();
 }

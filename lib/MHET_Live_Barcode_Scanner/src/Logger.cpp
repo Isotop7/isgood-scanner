@@ -17,7 +17,7 @@ const String Logger::LOG_COMPONENT_MQTT = "MQTT";
 const String Logger::LOG_COMPONENT_DISPLAY = "DISPLAY";
 const String Logger::LOG_COMPONENT_JOYSTICK = "JOYSTICK";
 
-Logger::Logger(Adafruit_SSD1306& oledDisplay) : _oledDisplay(oledDisplay), _lastLogMessage (LogMessage("", "", ""))
+Logger::Logger(Adafruit_SSD1306 &oledDisplay) : _oledDisplay(oledDisplay), _lastLogMessage(LogMessage("", "", ""))
 {
   _displayAvailable = true;
 }

@@ -53,13 +53,14 @@ namespace OptionCodes
         {OptionCode::EnableISSN, "EnableISSN"},
         {OptionCode::EnableCODE32, "EnableCODE32"},
         {OptionCode::DeviceSettings, "DeviceSettings"},
-        {OptionCode::ConfigurationManagement, "ConfigurationManagement"}
-    };
+        {OptionCode::ConfigurationManagement, "ConfigurationManagement"}};
 
     // Function to get the hex value for a given enum name
-    uint16_t getHexValueForEnum(OptionCode optionCode) {
+    uint16_t getHexValueForEnum(OptionCode optionCode)
+    {
         auto it = optionCodeMap.find(optionCode);
-        if (it != optionCodeMap.end()) {
+        if (it != optionCodeMap.end())
+        {
             // Found the enum name in the map, return its hex value
             return static_cast<uint16_t>(optionCode);
         }
@@ -68,9 +69,12 @@ namespace OptionCodes
     }
 
     // Function to get the enum name for a given hex value
-    OptionCode getEnumForHexValue(uint16_t hexValue) {
-        for (const auto& pair : optionCodeMap) {
-            if (static_cast<uint16_t>(pair.first) == hexValue) {
+    OptionCode getEnumForHexValue(uint16_t hexValue)
+    {
+        for (const auto &pair : optionCodeMap)
+        {
+            if (static_cast<uint16_t>(pair.first) == hexValue)
+            {
                 // Found the hex value in the map, return the associated enum
                 return pair.first;
             }
@@ -80,7 +84,8 @@ namespace OptionCodes
     }
 
     // Function to get the map of enum values and names
-    const std::map<OptionCode, String>& getOptionCodeMap() {
+    const std::map<OptionCode, String> &getOptionCodeMap()
+    {
         return optionCodeMap;
     }
 }

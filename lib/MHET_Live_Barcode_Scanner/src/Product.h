@@ -5,22 +5,22 @@
 
 class Product
 {
-    public:
-        Product();
-        Product(String barcode);
+public:
+    Product();
+    Product(String barcode);
 
-        String getBarcodeJSON() const;
-        String getBestBeforeJSON() const;
-        boolean isValid() const;
+    String getBarcodeJSON() const;
+    String getBestBeforeJSON() const;
+    boolean isValid() const;
 
-        void setBestBefore(int16_t timestamp[3]);
+    void setBestBefore(int16_t timestamp[3]);
 
-        String getBarcode() const;
-        String getBestBefore() const;
+    String getBarcode() const;
+    String getBestBefore() const;
 
-    private:
-        String _barcode;
-        String _bestBefore;
+private:
+    String _barcode;
+    String _bestBefore;
 };
 
 #endif // PRODUCT_H

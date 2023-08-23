@@ -6,7 +6,7 @@
 #include "Command.h"
 #include "Logger.h"
 
-MHET_Live_Barcode_Scanner::MHET_Live_Barcode_Scanner(SoftwareSerial* serial, unsigned long timeout, Logger& loggerRef) : _serial(serial), _timeout(timeout), _logger(loggerRef) {}
+MHET_Live_Barcode_Scanner::MHET_Live_Barcode_Scanner(SoftwareSerial *serial, unsigned long timeout, Logger &loggerRef) : _serial(serial), _timeout(timeout), _logger(loggerRef) {}
 
 void MHET_Live_Barcode_Scanner::resetSettings()
 {
@@ -31,14 +31,16 @@ Command::Response MHET_Live_Barcode_Scanner::configureOption(int optionCode, int
     String command = Command::Mode::MODIFY;
 
     String optionCodeStr = String(optionCode, HEX);
-    if (optionCodeStr.length() < 4) {
+    if (optionCodeStr.length() < 4)
+    {
         while (optionCodeStr.length() < 4)
         {
             optionCodeStr = "0" + optionCodeStr;
         }
     }
     String valueStr = String(value, HEX);
-    if (valueStr.length() < 4) {
+    if (valueStr.length() < 4)
+    {
         while (valueStr.length() < 4)
         {
             valueStr = "0" + valueStr;
@@ -77,14 +79,16 @@ void MHET_Live_Barcode_Scanner::setOption(int optionCode, int value)
     String command = Command::Mode::MODIFY;
 
     String optionCodeStr = String(optionCode, HEX);
-    if (optionCodeStr.length() < 4) {
+    if (optionCodeStr.length() < 4)
+    {
         while (optionCodeStr.length() < 4)
         {
             optionCodeStr = "0" + optionCodeStr;
         }
     }
     String valueStr = String(value, HEX);
-    if (valueStr.length() < 4) {
+    if (valueStr.length() < 4)
+    {
         while (valueStr.length() < 4)
         {
             valueStr = "0" + valueStr;
@@ -104,7 +108,8 @@ void MHET_Live_Barcode_Scanner::getOption(int optionCode)
     String command = Command::Mode::QUERY;
 
     String optionCodeStr = String(optionCode, HEX);
-    if (optionCodeStr.length() < 4) {
+    if (optionCodeStr.length() < 4)
+    {
         while (optionCodeStr.length() < 4)
         {
             optionCodeStr = "0" + optionCodeStr;
@@ -127,7 +132,7 @@ Command::Response MHET_Live_Barcode_Scanner::queryConfiguration()
     getOption(OptionCodes::getHexValueForEnum(OptionCodes::OptionCode::ConfigurationManagement));
     // Wait for data to arrive in buffer
     delay(_timeout);
-    
+
     // Read data from buffer
     while (_serial->available())
     {
@@ -152,22 +157,24 @@ Command::Response MHET_Live_Barcode_Scanner::queryConfiguration()
     return Command::Response::ACK;
 }
 
-void MHET_Live_Barcode_Scanner::readConfig(const char* rawConfig, size_t length)
+void MHET_Live_Barcode_Scanner::readConfig(const char *rawConfig, size_t length)
 {
-    const char* lineStart = rawConfig;
-    const char* lineEnd;
+    const char *lineStart = rawConfig;
+    const char *lineEnd;
 
     // Iterate through the input string to process each line
-    while (*lineStart != '\0') {
+    while (*lineStart != '\0')
+    {
         // Find the end of the current line
         lineEnd = strchr(lineStart, '\n');
-        if (lineEnd == nullptr) {
+        if (lineEnd == nullptr)
+        {
             // If there's no newline character, consider the rest of the string as the line
             lineEnd = lineStart + strlen(lineStart);
         }
 
         // Extract the current line into a temporary buffer
-        char buffer[50];  // Adjust the buffer size as needed
+        char buffer[50]; // Adjust the buffer size as needed
         size_t lineLength = lineEnd - lineStart;
         strncpy(buffer, lineStart, lineLength);
         buffer[lineLength] = '\0';
@@ -190,8 +197,9 @@ std::vector<Command> MHET_Live_Barcode_Scanner::getConfigurationInstance() const
 
 String MHET_Live_Barcode_Scanner::getConfigurationAsString() const
 {
-    String config = "{\r\n";    
-    for (const Command& obj : _configuration) {
+    String config = "{\r\n";
+    for (const Command &obj : _configuration)
+    {
         config += "\t\"";
         config += obj.getOptionCode();
         config += "\": ";
@@ -209,7 +217,8 @@ String MHET_Live_Barcode_Scanner::getConfigurationAsHTML() const
     config += "\t\t<th>OptionCode</th>\r\n";
     config += "\t\t<th>Value</th>\r\n";
     config += "\t</tr>\r\n";
-    for (const Command& obj : _configuration) {
+    for (const Command &obj : _configuration)
+    {
         config += "\t<tr>\r\n";
         config += "\t\t<td>";
         config += obj.getOptionCode();
@@ -225,24 +234,25 @@ String MHET_Live_Barcode_Scanner::getConfigurationAsHTML() const
 
 String MHET_Live_Barcode_Scanner::getNextBarcode() const
 {
-  String barcode = "";
-  char receivedChar;
+    String barcode = "";
+    char receivedChar;
 
-  while (_serial->available())
-  {
-    receivedChar = _serial->read();
-    if (receivedChar == static_cast<char>(Command::Response::EOL)) {
-      _logger.log(Logger::LOG_COMPONENT_SCANNER, Logger::LOG_EVENT_INFO, "Scanned new barcode -> " + barcode);
-      break; // Exit the loop if line feed character is received
-    }
-    barcode += receivedChar;
-
-    // If we cant find data, wait for the serial timeout to be sure no more data has arrived while emptying buffer
-    if (_serial->available() == 0)
+    while (_serial->available())
     {
-      delay(_timeout);
+        receivedChar = _serial->read();
+        if (receivedChar == static_cast<char>(Command::Response::EOL))
+        {
+            _logger.log(Logger::LOG_COMPONENT_SCANNER, Logger::LOG_EVENT_INFO, "Scanned new barcode -> " + barcode);
+            break; // Exit the loop if line feed character is received
+        }
+        barcode += receivedChar;
+
+        // If we cant find data, wait for the serial timeout to be sure no more data has arrived while emptying buffer
+        if (_serial->available() == 0)
+        {
+            delay(_timeout);
+        }
     }
-  }
-  barcode.trim();
-  return barcode;
+    barcode.trim();
+    return barcode;
 }
