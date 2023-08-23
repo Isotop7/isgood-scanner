@@ -151,6 +151,14 @@ void drawMenuShowScannedAt()
 
         menuItemRefreshPending = false;
     }
+
+    product = Product(scanner.getNextBarcode());
+    if (product.isValid())
+    {
+        logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Publish new barcode to get scannedAt " + product.getBarcode());
+        mqttClient.publish(ISGOOD_TOPIC_SCANNEDAT_GET, product.getBarcodeJSON().c_str());
+        menuRefreshPending = true;
+    }
 }
 
 void drawMenuRemoveProduct()
@@ -326,6 +334,16 @@ void drawMenuSetTimestamp()
     oledDisplay.display();
 }
 
+void drawShowScannedAt(String date)
+{
+    oledDisplay.clearDisplay();
+    oledDisplay.setCursor(32, 8);
+    oledDisplay.print("Scanned at: ");
+    oledDisplay.setCursor(33, 22);
+    oledDisplay.println(date);
+    oledDisplay.display();
+}
+
 void selectNextItem()
 {
     selectedMenuIndex = selectedMenuIndex + 1;
@@ -473,6 +491,42 @@ void mainLoop()
     }
 }
 
+String getDateFromJSON(String json)
+{
+    String dateObject = json.substring(json.indexOf(','));
+    dateObject = dateObject.substring(dateObject.indexOf(':'));
+    dateObject = dateObject.substring(2, dateObject.indexOf('T'));
+
+    String remainder;
+    String year = dateObject.substring(0, dateObject.indexOf('-'));
+    remainder = dateObject.substring(dateObject.indexOf('-') + 1);
+    String month = remainder.substring(0, remainder.indexOf('-'));
+    remainder = remainder.substring(remainder.indexOf('-') + 1);
+    
+    return String(remainder + "." + month + "." + year);
+}
+
+void mqttCallback(char *topic, byte *payload, unsigned int length)
+{
+    String msg;
+    for (byte i = 0; i < length; i++)
+    {
+        char tmp = char(payload[i]);
+        msg += tmp;
+    }
+
+    if (strcmp(topic, ISGOOD_TOPIC_SCANNEDAT_PUBLISH) == 0)
+    {
+        logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "New callback for topic " + String(ISGOOD_TOPIC_SCANNEDAT_PUBLISH));
+        String date = getDateFromJSON(msg);
+        drawShowScannedAt(date);
+    }
+    else
+    {
+        logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_WARN, "Unknown topic " + String(topic));
+    }
+}
+
 void setup()
 {
     // Setup serial monitor
@@ -537,11 +591,11 @@ void setup()
     // Add root handler
     httpServer.on("/", handleRoot);
     httpServer.begin();
-    logger.log(Logger::LOG_COMPONENT_OTA, Logger::LOG_EVENT_INFO, OTA_HOSTNAME);
+    logger.log(Logger::LOG_COMPONENT_OTA, Logger::LOG_EVENT_INFO, String("OTA and info page are reachable with MDNS name " + OTA_HOSTNAME));
 
     // Setup mqtt connection
     mqttClient.setServer(MQTT_BROKER_IP, MQTT_BROKER_PORT);
-    // client.setCallback(callback);
+    mqttClient.setCallback(mqttCallback);
 
     logger.log(Logger::LOG_COMPONENT_MAIN, Logger::LOG_EVENT_INFO, "Leave setup()");
 }
@@ -559,6 +613,8 @@ void loop()
             if (mqttClient.connected())
             {
                 logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, "Connected to mqtt broker");
+                logger.log(Logger::LOG_COMPONENT_MQTT, Logger::LOG_EVENT_INFO, String("Subscribing to topic '" + String(ISGOOD_TOPIC_SCANNEDAT_PUBLISH) + "'"));
+                mqttClient.subscribe(ISGOOD_TOPIC_SCANNEDAT_PUBLISH);
                 break;
             }
         }
